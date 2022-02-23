@@ -1,16 +1,19 @@
 package node
 
 import (
-	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/log"
-	"github.com/gitferry/bamboo/message"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/message"
 )
 
 // http request header names
@@ -23,6 +26,22 @@ var ppFree = sync.Pool{
 	New: func() interface{} {
 		return make(chan message.TransactionReply, 1)
 	},
+}
+
+func (n *node) SimulateTx() {
+	// Transaction {cmd=Put{key=0 value= id= cid=0 nid=1}
+	time.Sleep(10 * time.Second)
+	base := string(n.id)
+	count := 0
+	for {
+		time.Sleep(time.Duration(n.txInterval) * time.Microsecond)
+
+		now := time.Now()
+		tx := message.Transaction{Command: db.Command{Key: db.Key(count)}, ID: base + strconv.Itoa(count), Timestamp: now}
+		count++
+		n.TxChan <- tx
+
+	}
 }
 
 // serve serves the http REST API request from clients

@@ -46,5 +46,6 @@ bin/deploy/macos/client
 bin/deploy/macos/server
 
 .log
+result_*.json
 /package-lock.json
 /node_modules/

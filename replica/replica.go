@@ -3,9 +3,10 @@ package replica
 import (
 	"encoding/gob"
 	"fmt"
+	"time"
+
 	fhs "github.com/gitferry/bamboo/fasthostuff"
 	"github.com/gitferry/bamboo/lbft"
-	"time"
 
 	"go.uber.org/atomic"
 
@@ -62,9 +63,9 @@ type Replica struct {
 }
 
 // NewReplica creates a new replica instance
-func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
+func NewReplica(id identity.NodeID, alg string, isByz bool, txInterval int) *Replica {
 	r := new(Replica)
-	r.Node = node.NewNode(id, isByz)
+	r.Node = node.NewNode(id, isByz, txInterval)
 	if isByz {
 		log.Infof("[%v] is Byzantine", r.ID())
 	}
@@ -167,17 +168,19 @@ func (r *Replica) handleTxn(m message.Transaction) {
 /* Processors */
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
-	if block.Proposer == r.ID() {
-		for _, txn := range block.Payload {
-			// only record the delay of transactions from the local memory pool
-			delay := time.Now().Sub(txn.Timestamp)
-			r.totalDelay += delay
-			r.latencyNo++
-		}
+	var latencys time.Duration
+	// if block.Proposer == r.ID() {
+	for _, txn := range block.Payload {
+		// only record the delay of transactions from the local memory pool
+		delay := time.Since(txn.Timestamp)
+		latencys += delay
+		r.totalDelay += delay
+		r.latencyNo++
 	}
+	// }
 	r.committedNo++
 	r.totalCommittedTx += len(block.Payload)
-	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
+	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, tx average latency: %.5f ms, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), float64(latencys.Milliseconds())/float64(len(block.Payload)), block.ID)
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {

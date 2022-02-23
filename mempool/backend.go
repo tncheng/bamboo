@@ -2,25 +2,28 @@ package mempool
 
 import (
 	"container/list"
-	"github.com/gitferry/bamboo/message"
 	"sync"
+
+	"github.com/gitferry/bamboo/message"
 )
 
 type Backend struct {
 	txns          *list.List
 	limit         int
+	duplicate     int
 	totalReceived int64
 	*BloomFilter
 	mu *sync.Mutex
 }
 
-func NewBackend(limit int) *Backend {
+func NewBackend(limit int, duplicate int) *Backend {
 	var mu sync.Mutex
 	return &Backend{
 		txns:        list.New(),
 		BloomFilter: NewBloomFilter(),
 		mu:          &mu,
 		limit:       limit,
+		duplicate:   duplicate,
 	}
 }
 
@@ -30,11 +33,15 @@ func (b *Backend) insertBack(txn *message.Transaction) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.size() > b.limit {
+	if b.limit-b.size() < b.duplicate {
 		return
 	}
-	b.totalReceived++
-	b.txns.PushBack(txn)
+
+	for i := 0; i < b.duplicate; i++ {
+		b.totalReceived++
+		b.txns.PushBack(txn)
+	}
+
 }
 
 func (b *Backend) insertFront(txn *message.Transaction) {

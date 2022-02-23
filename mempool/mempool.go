@@ -1,9 +1,10 @@
 package mempool
 
 import (
+	"time"
+
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/message"
-	"time"
 )
 
 type MemPool struct {
@@ -13,7 +14,7 @@ type MemPool struct {
 // NewTransactions creates a new memory pool for transactions.
 func NewMemPool() *MemPool {
 	mp := &MemPool{
-		Backend: NewBackend(config.GetConfig().MemSize),
+		Backend: NewBackend(config.GetConfig().MemSize, config.GetConfig().Duplicate),
 	}
 
 	return mp
