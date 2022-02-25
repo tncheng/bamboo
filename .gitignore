@@ -49,3 +49,5 @@ bin/deploy/macos/server
 result_*.json
 /package-lock.json
 /node_modules/
+deployc
+result
