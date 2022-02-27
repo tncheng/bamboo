@@ -58,3 +58,11 @@ def Analyze(config_dir,result_dir,log):
     result_file=".".join(log.split('.')[:-1])+".result.json"
     with open("{}/{}".format(result_dir,result_file),'w') as wf:
         json.dump(currentConfig,wf,indent=4)
+
+
+def Virtual_node(dir):
+    with open(f'{dir}/ips.txt','r' ) as f:
+        nodes=[]
+        for line in iter(f):
+            nodes.append(int("60{}".format(line.split('.')[-1][:-1])))
+        return nodes
