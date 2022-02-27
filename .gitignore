@@ -50,4 +50,4 @@ result_*.json
 /package-lock.json
 /node_modules/
 deployc
-result
+result*
