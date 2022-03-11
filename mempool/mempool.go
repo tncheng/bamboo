@@ -1,8 +1,6 @@
 package mempool
 
 import (
-	"time"
-
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/message"
 )
