@@ -64,9 +64,9 @@ type Replica struct {
 
 // NewReplica creates a new replica instance
 func NewReplica(id identity.NodeID, alg string, isByz bool, txInterval int) *Replica {
-	log.Infof("consensus algorithm:%v", alg)
 	r := new(Replica)
 	r.Node = node.NewNode(id, isByz, txInterval)
+	log.Infof("node id: %v consensus algorithm:%v", r.ID(), alg)
 	if isByz {
 		log.Infof("[%v] is Byzantine", r.ID())
 	}
@@ -172,18 +172,19 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	var latencys time.Duration
-	// if block.Proposer == r.ID() {
-	for _, txn := range block.Payload {
-		// only record the delay of transactions from the local memory pool
-		delay := time.Since(txn.Timestamp)
-		latencys += delay
-		r.totalDelay += delay
-		r.latencyNo++
+	if block.Proposer == r.ID() {
+		for _, txn := range block.Payload {
+			// only record the delay of transactions from the local memory pool
+			delay := time.Since(txn.Timestamp)
+			latencys += delay
+			r.totalDelay += delay
+			r.latencyNo++
+		}
+		log.Infof("[%v] commit txs' average latency: %.5f ms", r.ID(), float64(latencys.Milliseconds())/float64(len(block.Payload)))
 	}
-	// }
 	r.committedNo++
 	r.totalCommittedTx += len(block.Payload)
-	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, tx average latency: %.5f ms, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), float64(latencys.Milliseconds())/float64(len(block.Payload)), block.ID)
+	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {

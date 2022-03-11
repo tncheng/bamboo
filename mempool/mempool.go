@@ -21,7 +21,6 @@ func NewMemPool() *MemPool {
 }
 
 func (mp *MemPool) addNew(tx *message.Transaction) {
-	tx.Timestamp = time.Now()
 	mp.Backend.insertBack(tx)
 	mp.Backend.addToBloom(tx.ID)
 }
