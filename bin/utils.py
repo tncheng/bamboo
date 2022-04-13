@@ -3,7 +3,7 @@ import time
 import json
 
 from numpy import nan_to_num
-
+from numpy import mean
 def UpdateConfig(dir):
     with open("update.json",'r') as uc:
         config=json.load(uc)
@@ -50,7 +50,7 @@ def Analyze(config_dir,result_dir,log,N):
     txs=0
     fp=open("{}/{}".format(result_dir, log))
     timelist=[]
-    latency=0.0
+    latencys=[]
     blocks=0
     stat={}
     alg=""
@@ -69,17 +69,18 @@ def Analyze(config_dir,result_dir,log,N):
                 continue
             blocks+=1
         if "latency" in line:
-            latency=nan_to_num(float(line.split(' ')[-2]))
+            latencys.append(nan_to_num(float(line.split(' ')[-2])))
     if len(timelist)<1:
         print("there is no valid log")
         return None
-    duration=timelist[-1]-timelist[0]
+    duration=timelist[-1]-timelist[0]+1
     stat['id']=id
     stat['algorithm']=alg[:-1]
     stat['running time(s)']=duration
     stat['txs']=txs
     stat['tps(tx/s)']=int(txs/duration)
-    stat['latency(ms)']=latency
+    stat['average latency(ms)']=mean(latencys)
     stat['replicas']=N
     print(json.dumps( stat,indent=2))
+    stat['latencys']=str(latencys)
     return stat
