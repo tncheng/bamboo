@@ -1,7 +1,8 @@
 {
     "bsize": 400,
+    "memsize": 5120,
     "txinterval": 5,
-    "duplicate": 2,
-    "byzNo": 9,
-    "memsize": 5120
+    "duplicate": 10,
+    "byzNo": 0,
+    "payload_size":512
 }

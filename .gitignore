@@ -51,3 +51,4 @@ result_*.json
 /node_modules/
 deployc
 result*
+*.pem
