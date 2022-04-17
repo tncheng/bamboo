@@ -26,6 +26,7 @@ type Fhs struct {
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
 	forkedBlocks    chan *blockchain.Block
+	cleanBlocks     chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[types.View]*blockchain.Block
 	highQC          *blockchain.QC
@@ -37,7 +38,8 @@ func NewFhs(
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
 	committedBlocks chan *blockchain.Block,
-	forkedBlocks chan *blockchain.Block) *Fhs {
+	forkedBlocks chan *blockchain.Block,
+	cleanBlocks chan *blockchain.Block) *Fhs {
 	f := new(Fhs)
 	f.Node = node
 	f.Election = elec
@@ -48,6 +50,7 @@ func NewFhs(
 	f.highQC = &blockchain.QC{View: 0}
 	f.committedBlocks = committedBlocks
 	f.forkedBlocks = forkedBlocks
+	f.cleanBlocks = cleanBlocks
 	return f
 }
 
@@ -83,6 +86,7 @@ func (f *Fhs) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("received a proposal (%v) from an invalid leader (%v)", block.View, block.Proposer)
 	}
 	f.bc.AddBlock(block)
+	f.cleanBlocks <- block
 
 	// check commit rule
 	qc := block.QC
@@ -191,7 +195,7 @@ func (f *Fhs) ProcessLocalTmo(view types.View) {
 	log.Debugf("[%v] broadcast is done for sending tmo", f.ID())
 }
 
-func (f *Fhs) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
+func (f *Fhs) MakeProposal(view types.View, payload []*message.Payload) *blockchain.Block {
 	qc := f.forkChoice()
 	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, f.ID())
 	return block

@@ -26,6 +26,7 @@ type Tchs struct {
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
 	forkedBlocks    chan *blockchain.Block
+	cleanBlocks     chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[types.View]*blockchain.Block
 	highQC          *blockchain.QC
@@ -37,7 +38,8 @@ func NewTchs(
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
 	committedBlocks chan *blockchain.Block,
-	forkedBlocks chan *blockchain.Block) *Tchs {
+	forkedBlocks chan *blockchain.Block,
+	cleanBlocks chan *blockchain.Block) *Tchs {
 	th := new(Tchs)
 	th.Node = node
 	th.Election = elec
@@ -48,6 +50,7 @@ func NewTchs(
 	th.highQC = &blockchain.QC{View: 0}
 	th.committedBlocks = committedBlocks
 	th.forkedBlocks = forkedBlocks
+	th.cleanBlocks = cleanBlocks
 	return th
 }
 
@@ -83,6 +86,7 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("received a proposal (%v) from an invalid leader (%v)", block.View, block.Proposer)
 	}
 	th.bc.AddBlock(block)
+	th.cleanBlocks <- block
 
 	// check commit rule
 	qc := block.QC
@@ -191,7 +195,7 @@ func (th *Tchs) ProcessLocalTmo(view types.View) {
 	log.Debugf("[%v] broadcast is done for sending tmo", th.ID())
 }
 
-func (th *Tchs) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
+func (th *Tchs) MakeProposal(view types.View, payload []*message.Payload) *blockchain.Block {
 	qc := th.forkChoice()
 	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, th.ID())
 	return block

@@ -2,6 +2,7 @@
   "address": {
     "1": "tcp://127.0.0.1:3735"
   },
+  "mpaddress":{},
   "http_address": {
     "1": "http://127.0.0.1:8070"
   },
@@ -13,13 +14,14 @@
   "chan_buffer_size": 10240,
   "buffer_size": 10240,
   "multiversion": false,
-  "timeout": 350,
-  "bsize": 100,
-  "memsize": 50,
-  "txinterval":5,
-  "duplicate":2,
+  "timeout": 1000,
+  "bsize": 400,
+  "memsize": 10000,
+  "rate":100000,
+  "virtual_clients":1,
   "fixed": false,
-  "payload_size": 0,
+  "payload_size": 1024,
+  "deliver_size":400000,
   "delta": 1,
   "hasher": "sha3_256",
   "signer": "ECDSA_P256",

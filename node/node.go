@@ -36,8 +36,6 @@ type node struct {
 	handles     map[string]reflect.Value
 	server      *http.Server
 	isByz       bool
-	txInterval  int
-	payloadSize int
 	totalTxn    int
 
 	sync.RWMutex
@@ -45,13 +43,11 @@ type node struct {
 }
 
 // NewNode creates a new Node object from configuration
-func NewNode(id identity.NodeID, isByz bool, txInterval int,payloadSize int) Node {
+func NewNode(id identity.NodeID, isByz bool) Node {
 	return &node{
-		id:         id,
-		isByz:      isByz,
-		txInterval: txInterval,
-		payloadSize: payloadSize,
-		Socket:     socket.NewSocket(id, config.Configuration.Addrs),
+		id:     id,
+		isByz:  isByz,
+		Socket: socket.NewSocket(id, config.Configuration.Addrs),
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.Configuration.ChanBufferSize),
 		TxChan:      make(chan interface{}, config.Configuration.ChanBufferSize),
@@ -101,7 +97,6 @@ func (n *node) Run() {
 		go n.txn()
 	}
 	// n.http()
-	n.SimulateTx()
 }
 
 func (n *node) txn() {
