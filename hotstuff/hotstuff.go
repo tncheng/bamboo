@@ -27,6 +27,7 @@ type HotStuff struct {
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
 	forkedBlocks    chan *blockchain.Block
+	cleanBlocks     chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[types.View]*blockchain.Block
 	mu              sync.Mutex
@@ -37,7 +38,8 @@ func NewHotStuff(
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
 	committedBlocks chan *blockchain.Block,
-	forkedBlocks chan *blockchain.Block) *HotStuff {
+	forkedBlocks chan *blockchain.Block,
+	cleanBlocks chan *blockchain.Block) *HotStuff {
 	hs := new(HotStuff)
 	hs.Node = node
 	hs.Election = elec
@@ -48,24 +50,26 @@ func NewHotStuff(
 	hs.highQC = &blockchain.QC{View: 0}
 	hs.committedBlocks = committedBlocks
 	hs.forkedBlocks = forkedBlocks
+	hs.cleanBlocks = cleanBlocks
 	return hs
 }
 
 func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	log.Debugf("[%v] is processing block from %v, view: %v, id: %x", hs.ID(), block.Proposer.Node(), block.View, block.ID)
 	curView := hs.pm.GetCurView()
-	if block.Proposer != hs.ID() {
-		blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
-		if !blockIsVerified {
-			log.Warningf("[%v] received a block with an invalid signature", hs.ID())
-		}
-	}
 	if block.View > curView+1 {
 		//	buffer the block
 		hs.bufferedBlocks[block.View-1] = block
 		log.Debugf("[%v] the block is buffered, id: %x", hs.ID(), block.ID)
 		return nil
 	}
+	if block.Proposer != hs.ID() {
+		blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
+		if !blockIsVerified {
+			log.Warningf("[%v] received a block with an invalid signature", hs.ID())
+		}
+	}
+
 	if block.QC != nil {
 		hs.updateHighQC(block.QC)
 	} else {
@@ -90,6 +94,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		hs.processCertificate(qc)
 		delete(hs.bufferedQCs, block.ID)
 	}
+	hs.cleanBlocks <- block
 
 	shouldVote, err := hs.votingRule(block)
 	if err != nil {
@@ -168,7 +173,7 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 	hs.ProcessRemoteTmo(tmo)
 }
 
-func (hs *HotStuff) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
+func (hs *HotStuff) MakeProposal(view types.View, payload []*message.Payload) *blockchain.Block {
 	qc := hs.forkChoice()
 	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, hs.ID())
 	return block

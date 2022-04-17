@@ -2,6 +2,7 @@ package streamlet
 
 import (
 	"fmt"
+
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
@@ -24,6 +25,7 @@ type Streamlet struct {
 	bufferedNotarizedBlock map[crypto.Identifier]*blockchain.QC
 	committedBlocks        chan *blockchain.Block
 	forkedBlocks           chan *blockchain.Block
+	cleanBlocks            chan *blockchain.Block
 	echoedBlock            map[crypto.Identifier]struct{}
 	echoedVote             map[crypto.Identifier]struct{}
 }
@@ -34,13 +36,15 @@ func NewStreamlet(
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
 	committedBlocks chan *blockchain.Block,
-	forkedBlocks chan *blockchain.Block) *Streamlet {
+	forkedBlocks chan *blockchain.Block,
+	cleanBlocks chan *blockchain.Block) *Streamlet {
 	sl := new(Streamlet)
 	sl.Node = node
 	sl.Election = elec
 	sl.pm = pm
 	sl.committedBlocks = committedBlocks
 	sl.forkedBlocks = forkedBlocks
+	sl.cleanBlocks = cleanBlocks
 	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	sl.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
 	sl.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
@@ -91,6 +95,7 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 		sl.Broadcast(block)
 	}
 	sl.bc.AddBlock(block)
+	sl.cleanBlocks <- block
 	shouldVote := sl.votingRule(block)
 	if !shouldVote {
 		log.Debugf("[%v] is not going to vote for block, id: %x", sl.ID(), block.ID)
@@ -166,7 +171,7 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 	sl.ProcessRemoteTmo(tmo)
 }
 
-func (sl *Streamlet) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
+func (sl *Streamlet) MakeProposal(view types.View, payload []*message.Payload) *blockchain.Block {
 	prevID := sl.forkChoice()
 	block := blockchain.MakeBlock(view, &blockchain.QC{
 		View:      0,
